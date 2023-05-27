@@ -1,13 +1,13 @@
-# Sample Hardhat Project
+# Install guide
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
-
-Try running some of the following tasks:
+Install npm modules:
 
 ```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
+npm init -y
+npm install --save-dev hardhat
+npm install --save-dev typescript  
+npm install --save-dev @nomicfoundation/hardhat-toolbox
+npm install --save-dev ts-node    
+npm install @openzeppelin/contracts      
 ```
+
