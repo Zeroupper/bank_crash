@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract BankCrashToken is ERC20, Ownable {
     using SafeMath for uint256;
 
-    uint256 public constant INITIAL_SUPPLY = 420690000000 * (10 ** 18); // 420.69 billion tokens, assuming 18 decimal places
+    uint256 public constant INITIAL_SUPPLY = 420690000000 * (10 ** 18); // 420.69 billion tokens, 18 decimal places
 
     // Allocation
     uint256 public constant STAKING_REWARD_ALLOCATION = 600;
@@ -17,14 +17,12 @@ contract BankCrashToken is ERC20, Ownable {
     uint256 public constant COMMUNITY_REWARDS_ALLOCATION = 31;
 
     // Addresses for allocation
-    address public stakingRewardAddress;
-    address public liquidityPoolAddress;
-    address public teamMarketingAddress;
-    address public cexListingAddress;
-    address public communityRewardsAddress;
+    address internal liquidityPoolAddress;
+    address internal teamMarketingAddress;
+    address internal cexListingAddress;
+    address internal communityRewardsAddress;
 
     constructor(
-        address _stakingRewardAddress,
         address _liquidityPoolAddress,
         address _teamMarketingAddress,
         address _cexListingAddress,
@@ -39,14 +37,13 @@ contract BankCrashToken is ERC20, Ownable {
             "Cannot set allocation address to zero address"
         );
 
-        stakingRewardAddress = _stakingRewardAddress;
         liquidityPoolAddress = _liquidityPoolAddress;
         teamMarketingAddress = _teamMarketingAddress;
         cexListingAddress = _cexListingAddress;
         communityRewardsAddress = _communityRewardsAddress;
 
         _mint(
-            stakingRewardAddress,
+            address(this),
             INITIAL_SUPPLY.mul(STAKING_REWARD_ALLOCATION).div(1000)
         );
         _mint(
@@ -69,5 +66,12 @@ contract BankCrashToken is ERC20, Ownable {
 
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
+    }
+
+
+    // TODO STAKING_CONTRACT_ADDRESS
+    function transferFromStakingRewards(address recipient, uint256 amount) external {
+        // require(msg.sender == STAKING_CONTRACT_ADDRESS, "Only StakingContract can call this function");
+        _transfer(stakingRewardAddress, recipient, amount);
     }
 }
