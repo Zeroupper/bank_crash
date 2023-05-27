@@ -30,8 +30,14 @@ contract BankCrashToken is ERC20, Ownable {
         address _cexListingAddress,
         address _communityRewardsAddress
     ) ERC20("BankCrashToken", "BASH") {
-        require(_stakingRewardAddress != address(0) && _liquidityPoolAddress != address(0) && _teamMarketingAddress != address(0) 
-        && _cexListingAddress != address(0) && _communityRewardsAddress != address(0), "Cannot set allocation address to zero address");
+        require(
+            _stakingRewardAddress != address(0) &&
+                _liquidityPoolAddress != address(0) &&
+                _teamMarketingAddress != address(0) &&
+                _cexListingAddress != address(0) &&
+                _communityRewardsAddress != address(0),
+            "Cannot set allocation address to zero address"
+        );
 
         stakingRewardAddress = _stakingRewardAddress;
         liquidityPoolAddress = _liquidityPoolAddress;
@@ -61,32 +67,7 @@ contract BankCrashToken is ERC20, Ownable {
         );
     }
 
-    // Override the transfer function to include a 1% fee
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal override {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-
-        uint256 fee = amount.div(100); // 1% fee
-        uint256 amountAfterFee = amount.sub(fee);
-        super._transfer(sender, recipient, amountAfterFee);
-        super._transfer(sender, address(this), fee); // Transfer the fee to the contract
-        emit TransferWithFee(sender, recipient, amountAfterFee, fee);
-    }
-
-    // Function to allow the contract owner to perform buybacks
-    function buyBackAndBurn(uint256 amount) external onlyOwner {
-        require(balanceOf(address(this)) >= amount, "Not enough tokens to burn");
-        _burn(address(this), amount);
-    }
-
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
-
-    event TransferWithFee(address indexed sender, address indexed recipient, uint256 amount, uint256 fee);
-    event BuyBackAndBurn(address indexed operator, uint256 amount);
 }
