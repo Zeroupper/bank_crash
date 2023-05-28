@@ -59,10 +59,7 @@ contract BankCrashToken is ERC20, Ownable {
         Stake storage userStake = stakes[msg.sender][_stakeId];
 
         uint256 bonusApy = calculateBonusAPY();
-        uint256 reward = userStake
-            .amount
-            .mul(userStake.baseAPY.add(bonusApy))
-            .div(100);
+        uint256 reward = userStake.amount * ((1 + userStake.baseAPY.add(bonusApy) / 100) ^ (block.timestamp - userStake.createdAt) / 365 days) - userStake.amount;
     
         uint256 finalReward = getStakePenalty(userStake).mul(reward);
 
@@ -71,6 +68,7 @@ contract BankCrashToken is ERC20, Ownable {
             finalReward
         );
         transfer(msg.sender, userStake.amount + finalReward);
+        delete stakes[msg.sender][_stakeId];
     }
 
     function getStakePenalty(Stake memory userStake) internal view returns (uint256) {
