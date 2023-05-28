@@ -11,7 +11,7 @@ contract BankCrashToken is ERC20, Ownable {
 
     uint256 public constant INITIAL_SUPPLY = 420690000000 * (10 ** 18); // 420.69 billion tokens, 18 decimal places
 
-    struct Locked {
+    struct Stake {
         uint256 amount;
         uint256 createdAt;
         uint256 endAt;
@@ -20,7 +20,7 @@ contract BankCrashToken is ERC20, Ownable {
     }
 
     // The first key is the user's address, and the second key is the stake ID
-    mapping(address => mapping(uint256 => Locked)) public stakes;
+    mapping(address => mapping(uint256 => Stake)) public stakes;
     // This keeps track of the next stake ID for each user
     mapping(address => uint256) public nextStakeId;
 
@@ -48,7 +48,7 @@ contract BankCrashToken is ERC20, Ownable {
         uint256 end = block.timestamp + _months * 30 days;
 
         // Create a new stake
-        stakes[msg.sender][nextStakeId[msg.sender]] = Locked(_amount, start, end, baseAPY, maxAPY);
+        stakes[msg.sender][nextStakeId[msg.sender]] = Stake(_amount, start, end, baseAPY, maxAPY);
 
         // Increment the next stake ID for this user
         nextStakeId[msg.sender]++;
@@ -56,7 +56,7 @@ contract BankCrashToken is ERC20, Ownable {
 
     function unstake(uint256 _stakeId) external {
         require(stakes[msg.sender][_stakeId].createdAt > 0, "This stake does not exist");
-        Locked storage userStake = stakes[msg.sender][_stakeId];
+        Stake storage userStake = stakes[msg.sender][_stakeId];
 
         uint256 bonusApy = calculateBonusAPY();
         uint256 reward = userStake
@@ -73,7 +73,7 @@ contract BankCrashToken is ERC20, Ownable {
         transfer(msg.sender, userStake.amount + finalReward);
     }
 
-    function getUnstakePenalty(Locked memory userStake) public view returns (uint256) {
+    function getUnstakePenalty(Stake memory userStake) public view returns (uint256) {
         uint256 stakingDuration = userStake.endAt - userStake.createdAt;
         uint256 completedStake = block.timestamp - userStake.createdAt;
 
