@@ -39,19 +39,19 @@ contract BankCrashToken is ERC20, Ownable {
         transferFrom(msg.sender, address(this), _amount);
 
         // Staking_apy = 1.69 * month
-        uint256 baseAPY = 169 * _months.div(100);
+        uint256 baseAPY = _months.mul(169).div(100);
 
         // Maximum_apy = 69 + 4.2 * month
-        uint256 maxAPY = 69 + (42 * _months.div(10));
+        uint256 maxAPY =  _months.mul(42).div(10).add(69);
 
         uint256 start = block.timestamp;
-        uint256 end = block.timestamp + _months * 30 days;
+        uint256 end = block.timestamp.add(_months.mul(30 days));
 
         // Create a new stake
         stakes[msg.sender][nextStakeId[msg.sender]] = Stake(_amount, start, end, baseAPY, maxAPY);
 
         // Increment the next stake ID for this user
-        nextStakeId[msg.sender]++;
+        nextStakeId[msg.sender].add(1);
     }
 
     function unstake(uint256 _stakeId) external {
@@ -64,7 +64,7 @@ contract BankCrashToken is ERC20, Ownable {
             .mul(userStake.baseAPY.add(bonusApy))
             .div(100);
     
-        uint256 finalReward = getUnstakePenalty(userStake) * reward;
+        uint256 finalReward = getStakePenalty(userStake).mul(reward);
 
         _mint(
             address(this),
@@ -73,9 +73,9 @@ contract BankCrashToken is ERC20, Ownable {
         transfer(msg.sender, userStake.amount + finalReward);
     }
 
-    function getUnstakePenalty(Stake memory userStake) public view returns (uint256) {
-        uint256 stakingDuration = userStake.endAt - userStake.createdAt;
-        uint256 completedStake = block.timestamp - userStake.createdAt;
+    function getStakePenalty(Stake memory userStake) internal view returns (uint256) {
+        uint256 stakingDuration = userStake.endAt.sub(userStake.createdAt);
+        uint256 completedStake = block.timestamp.sub(userStake.createdAt);
 
         if(completedStake > stakingDuration) {
             completedStake = stakingDuration;
@@ -85,7 +85,7 @@ contract BankCrashToken is ERC20, Ownable {
     }
 
     // Make call to Oracle, get bonus apy between the start of the stake and the end of the stake
-    function calculateBonusAPY() private pure returns (uint256) {
+    function calculateBonusAPY() internal pure returns (uint256) {
         return 10;
     }
 }
