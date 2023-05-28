@@ -54,15 +54,16 @@ contract BankCrashToken is ERC20, Ownable {
         stakes[msg.sender][nextStakeId[msg.sender]] = Stake(_amount, start, end, baseAPY, maxAPY);
 
         emit StakeCreated(msg.sender, nextStakeId[msg.sender], _amount, end, baseAPY, maxAPY);
+        
         // Increment the next stake ID for this user
-        nextStakeId[msg.sender].add(1);
+        nextStakeId[msg.sender] = nextStakeId[msg.sender].add(1);
     }
 
     function unstake(uint256 _stakeId) external {
         require(stakes[msg.sender][_stakeId].createdAt > 0, "This stake does not exist");
         Stake storage userStake = stakes[msg.sender][_stakeId];
 
-        uint256 bonusApy = calculateBonusAPY();
+        uint256 bonusApy = getBonusAPY();
         uint256 finalApy = userStake.baseAPY.add(bonusApy);
         uint256 stakingDurationInYear = (block.timestamp - userStake.createdAt) / (365 days);
 
@@ -88,18 +89,19 @@ contract BankCrashToken is ERC20, Ownable {
     }
 
     function getStakePenalty(Stake memory userStake) internal view returns (uint256) {
-        uint256 stakingDuration = userStake.endAt.sub(userStake.createdAt);
+        require(userStake.endAt.sub(userStake.createdAt) != 0, "Your staking duration cannot be 0.");
+        uint256 totalStakingDuration = userStake.endAt.sub(userStake.createdAt);
         uint256 completedStake = block.timestamp.sub(userStake.createdAt);
 
-        if(completedStake > stakingDuration) {
-            completedStake = stakingDuration;
+        if(block.timestamp > userStake.endAt) {
+            completedStake = totalStakingDuration;
         }
 
-        return 100 * (1 - completedStake / stakingDuration);
+        return completedStake.mul(1e18).div(totalStakingDuration);
     }
 
     // Make call to Oracle, get bonus apy between the start of the stake and the end of the stake
-    function calculateBonusAPY() internal pure returns (uint256) {
+    function getBonusAPY() internal pure returns (uint256) {
         return 10;
     }
 }
