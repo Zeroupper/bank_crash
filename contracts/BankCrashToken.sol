@@ -24,6 +24,9 @@ contract BankCrashToken is ERC20, Ownable {
     // This keeps track of the next stake ID for each user
     mapping(address => uint256) public nextStakeId;
 
+    event StakeCreated(address indexed user, uint256 stakeId, uint256 amount, uint256 endAt, uint256 baseAPY, uint256 maximumAPY);
+    event StakeRemoved(address indexed user, uint256 stakeId, uint256 amount, uint256 reward);
+
     constructor() ERC20("BankCrashToken", "BASH") {
         _mint(
             address(this),
@@ -50,6 +53,7 @@ contract BankCrashToken is ERC20, Ownable {
         // Create a new stake
         stakes[msg.sender][nextStakeId[msg.sender]] = Stake(_amount, start, end, baseAPY, maxAPY);
 
+        emit StakeCreated(msg.sender, nextStakeId[msg.sender], _amount, end, baseAPY, maxAPY);
         // Increment the next stake ID for this user
         nextStakeId[msg.sender].add(1);
     }
@@ -78,7 +82,9 @@ contract BankCrashToken is ERC20, Ownable {
             finalReward
         );
         transfer(msg.sender, userStake.amount + finalReward);
+        
         delete stakes[msg.sender][_stakeId];
+        emit StakeRemoved(msg.sender, _stakeId, userStake.amount, finalReward);
     }
 
     function getStakePenalty(Stake memory userStake) internal view returns (uint256) {
