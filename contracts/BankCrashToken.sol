@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: unlicensed
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -9,69 +11,81 @@ contract BankCrashToken is ERC20, Ownable {
 
     uint256 public constant INITIAL_SUPPLY = 420690000000 * (10 ** 18); // 420.69 billion tokens, 18 decimal places
 
-    // Allocation
-    uint256 public constant STAKING_REWARD_ALLOCATION = 600;
-    uint256 public constant LIQUIDITY_POOL_ALLOCATION = 200;
-    uint256 public constant TEAM_MARKETING_ALLOCATION = 100;
-    uint256 public constant CEX_LISTING_ALLOCATION = 69;
-    uint256 public constant COMMUNITY_REWARDS_ALLOCATION = 31;
+    struct Locked {
+        uint256 amount;
+        uint256 createdAt;
+        uint256 endAt;
+        uint256 baseAPY;
+        uint256 maximumAPY;
+    }
 
-    // Addresses for allocation
-    address internal liquidityPoolAddress;
-    address internal teamMarketingAddress;
-    address internal cexListingAddress;
-    address internal communityRewardsAddress;
+    // The first key is the user's address, and the second key is the stake ID
+    mapping(address => mapping(uint256 => Locked)) public stakes;
+    // This keeps track of the next stake ID for each user
+    mapping(address => uint256) public nextStakeId;
 
-    constructor(
-        address _liquidityPoolAddress,
-        address _teamMarketingAddress,
-        address _cexListingAddress,
-        address _communityRewardsAddress
-    ) ERC20("BankCrashToken", "BASH") {
-        require(
-            _stakingRewardAddress != address(0) &&
-                _liquidityPoolAddress != address(0) &&
-                _teamMarketingAddress != address(0) &&
-                _cexListingAddress != address(0) &&
-                _communityRewardsAddress != address(0),
-            "Cannot set allocation address to zero address"
+    constructor() ERC20("BankCrashToken", "BASH") {
+        _mint(
+            address(this),
+            INITIAL_SUPPLY
         );
+    }
 
-        liquidityPoolAddress = _liquidityPoolAddress;
-        teamMarketingAddress = _teamMarketingAddress;
-        cexListingAddress = _cexListingAddress;
-        communityRewardsAddress = _communityRewardsAddress;
+    function stake(uint256 _amount, uint256 _months) external {
+        require(_months > 0, "Staking period must be at least one month");
+        require(_amount > 0, "Staking amount must be greater than zero");
+
+        // Transfer the tokens to this contract
+        transferFrom(msg.sender, address(this), _amount);
+
+        // Staking_apy = 1.69 * month
+        uint256 baseAPY = 169 * _months.div(100);
+
+        // Maximum_apy = 69 + 4.2 * month
+        uint256 maxAPY = 69 + (42 * _months.div(10));
+
+        uint256 start = block.timestamp;
+        uint256 end = block.timestamp + _months * 30 days;
+
+        // Create a new stake
+        stakes[msg.sender][nextStakeId[msg.sender]] = Locked(_amount, start, end, baseAPY, maxAPY);
+
+        // Increment the next stake ID for this user
+        nextStakeId[msg.sender]++;
+    }
+
+    function unstake(uint256 _stakeId) external {
+        require(stakes[msg.sender][_stakeId].createdAt > 0, "This stake does not exist");
+        Locked storage userStake = stakes[msg.sender][_stakeId];
+
+        uint256 bonusApy = calculateBonusAPY();
+        uint256 reward = userStake
+            .amount
+            .mul(userStake.baseAPY.add(bonusApy))
+            .div(100);
+    
+        uint256 finalReward = getUnstakePenalty(userStake) * reward;
 
         _mint(
             address(this),
-            INITIAL_SUPPLY.mul(STAKING_REWARD_ALLOCATION).div(1000)
+            finalReward
         );
-        _mint(
-            liquidityPoolAddress,
-            INITIAL_SUPPLY.mul(LIQUIDITY_POOL_ALLOCATION).div(1000)
-        );
-        _mint(
-            teamMarketingAddress,
-            INITIAL_SUPPLY.mul(TEAM_MARKETING_ALLOCATION).div(1000)
-        );
-        _mint(
-            cexListingAddress,
-            INITIAL_SUPPLY.mul(CEX_LISTING_ALLOCATION).div(1000)
-        );
-        _mint(
-            communityRewardsAddress,
-            INITIAL_SUPPLY.mul(COMMUNITY_REWARDS_ALLOCATION).div(1000)
-        );
+        transfer(msg.sender, userStake.amount + finalReward);
     }
 
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount);
+    function getUnstakePenalty(Locked memory userStake) public view returns (uint256) {
+        uint256 stakingDuration = userStake.endAt - userStake.createdAt;
+        uint256 completedStake = block.timestamp - userStake.createdAt;
+
+        if(completedStake > stakingDuration) {
+            completedStake = stakingDuration;
+        }
+
+        return 100 * (1 - completedStake / stakingDuration);
     }
 
-
-    // TODO STAKING_CONTRACT_ADDRESS
-    function transferFromStakingRewards(address recipient, uint256 amount) external {
-        // require(msg.sender == STAKING_CONTRACT_ADDRESS, "Only StakingContract can call this function");
-        _transfer(stakingRewardAddress, recipient, amount);
+    // Make call to Oracle, get bonus apy between the start of the stake and the end of the stake
+    function calculateBonusAPY() private pure returns (uint256) {
+        return 10;
     }
 }
