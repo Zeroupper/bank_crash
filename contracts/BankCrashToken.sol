@@ -59,7 +59,17 @@ contract BankCrashToken is ERC20, Ownable {
         Stake storage userStake = stakes[msg.sender][_stakeId];
 
         uint256 bonusApy = calculateBonusAPY();
-        uint256 reward = userStake.amount * ((1 + userStake.baseAPY.add(bonusApy) / 100) ^ (block.timestamp - userStake.createdAt) / 365 days) - userStake.amount;
+        uint256 finalApy = userStake.baseAPY.add(bonusApy);
+        uint256 stakingDurationInYear = (block.timestamp - userStake.createdAt) / (365 days);
+
+        // X = D(1 + r/n)n*y where:
+
+        // X = Final amount
+        // D = Initial Deposit
+        // r = period rate 
+        // n = number of compounding periods per year
+        // y = number of years
+        uint256 reward = (1 + finalApy / 100 / 12) * 12 * stakingDurationInYear;
     
         uint256 finalReward = getStakePenalty(userStake).mul(reward);
 
