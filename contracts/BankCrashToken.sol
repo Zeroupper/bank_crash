@@ -34,7 +34,7 @@ contract BankCrashToken is ERC20, Ownable {
         );
     }
 
-    function stake(uint256 _amount, uint256 _months) external {
+    function stake(uint256 _amount, uint256 _months) virtual external {
         require(_months > 0, "Staking period must be at least one month");
         require(_amount > 0, "Staking amount must be greater than zero");
 
