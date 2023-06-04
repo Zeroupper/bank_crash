@@ -5,6 +5,7 @@ pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 contract BankCrashToken is ERC20, Ownable {
     using SafeMath for uint256;
@@ -35,11 +36,11 @@ contract BankCrashToken is ERC20, Ownable {
     }
 
     function stake(uint256 _amount, uint256 _months) virtual external {
-        require(_months > 0, "Staking period must be at least one month");
+        require(_months > 2, "Staking period must be at least 3 months");
         require(_amount > 0, "Staking amount must be greater than zero");
 
         // Transfer the tokens to this contract
-        transferFrom(msg.sender, address(this), _amount);
+        this.transferFrom(msg.sender, address(this), _amount);
 
         // Staking_apy = 1.69 * month
         uint256 baseAPY = _months.mul(169).div(100);
@@ -59,49 +60,53 @@ contract BankCrashToken is ERC20, Ownable {
         nextStakeId[msg.sender] = nextStakeId[msg.sender].add(1);
     }
 
-    function unstake(uint256 _stakeId) external {
+    function unstake(uint256 _stakeId) virtual external {
         require(stakes[msg.sender][_stakeId].createdAt > 0, "This stake does not exist");
         Stake storage userStake = stakes[msg.sender][_stakeId];
-
         uint256 bonusApy = getBonusAPY();
         uint256 finalApy = userStake.baseAPY.add(bonusApy);
-        uint256 stakingDurationInYear = (block.timestamp - userStake.createdAt) / (365 days);
-
-        // X = D(1 + r/n)n*y where:
-
-        // X = Final amount
-        // D = Initial Deposit
-        // r = period rate 
-        // n = number of compounding periods per year
-        // y = number of years
-        uint256 reward = (1 + finalApy / 100 / 12) * 12 * stakingDurationInYear;
-    
-        uint256 finalReward = getStakePenalty(userStake).mul(reward);
+        uint256 reward = calculateReward(finalApy, userStake);
+        uint256 rewardWithPenalty = userStake.amount.add(reward).mul(getStakePenalty(userStake)).div(100);
 
         _mint(
             address(this),
-            finalReward
+            rewardWithPenalty
         );
-        transfer(msg.sender, userStake.amount + finalReward);
-        
+        this.transfer(msg.sender, rewardWithPenalty);
         delete stakes[msg.sender][_stakeId];
-        emit StakeRemoved(msg.sender, _stakeId, userStake.amount, finalReward);
+        emit StakeRemoved(msg.sender, _stakeId, userStake.amount, rewardWithPenalty);
     }
 
     function getStakePenalty(Stake memory userStake) internal view returns (uint256) {
         require(userStake.endAt.sub(userStake.createdAt) != 0, "Your staking duration cannot be 0.");
         uint256 totalStakingDuration = userStake.endAt.sub(userStake.createdAt);
         uint256 completedStake = block.timestamp.sub(userStake.createdAt);
-
+        
         if(block.timestamp > userStake.endAt) {
-            completedStake = totalStakingDuration;
+            return 100;
         }
-
-        return completedStake.mul(1e18).div(totalStakingDuration);
+        if(block.timestamp < userStake.createdAt + 90 days) {
+            return 75;
+        }else {
+            return 75 + 25 * completedStake / totalStakingDuration;
+        }
     }
 
     // Make call to Oracle, get bonus apy between the start of the stake and the end of the stake
     function getBonusAPY() internal pure returns (uint256) {
         return 10;
+    }
+
+    function calculateReward(uint256 finalApy, Stake memory userStake) internal view returns (uint256) {
+        uint256 completedStake = block.timestamp.sub(userStake.createdAt);
+        uint256 stakingDuration = userStake.endAt.sub(userStake.createdAt);
+        uint256 stakingDurationInYears = stakingDuration.mul(100).div(365 days);
+
+        if(block.timestamp > userStake.endAt) {
+            completedStake = stakingDuration;
+        }
+
+        uint256 reward = userStake.amount.mul(finalApy).mul(stakingDurationInYears).div(100);
+        return reward.mul(completedStake).div(stakingDuration).div(100);
     }
 }

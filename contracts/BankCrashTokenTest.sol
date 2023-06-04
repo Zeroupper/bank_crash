@@ -19,7 +19,7 @@ contract BankCrashTokenTest is BankCrashToken {
 
     
     function stake(uint256 _amount, uint256 _months) override external {
-        require(_months > 0, "Staking period must be at least one month");
+        require(_months > 2, "Staking period must be at least 3 months");
         require(_amount > 0, "Staking amount must be greater than zero");
 
         // Transfer the tokens to this contract
@@ -42,4 +42,26 @@ contract BankCrashTokenTest is BankCrashToken {
         // Increment the next stake ID for this user
         nextStakeId[msg.sender] = nextStakeId[msg.sender].add(1);
     }
+
+    function unstake(uint256 _stakeId) override external {
+        require(stakes[msg.sender][_stakeId].createdAt > 0, "This stake does not exist");
+        Stake storage userStake = stakes[msg.sender][_stakeId];
+        console.log('userStake.amount -> ', userStake.amount);
+        uint256 bonusApy = getBonusAPY();
+        uint256 finalApy = userStake.baseAPY.add(bonusApy);
+        console.log('finalApy -> ', finalApy);
+        uint256 reward = calculateReward(finalApy, userStake);
+        console.log('reward -> ', reward);
+        console.log('getStakePenalty -> ', getStakePenalty(userStake));
+        uint256 rewardWithPenalty = userStake.amount.add(reward).mul(getStakePenalty(userStake)).div(100);
+
+        console.log('rewardWithPenalty -> ', rewardWithPenalty);
+        _mint(
+            address(this),
+            rewardWithPenalty
+        );
+        this.transfer(msg.sender, rewardWithPenalty);
+        delete stakes[msg.sender][_stakeId];
+        emit StakeRemoved(msg.sender, _stakeId, userStake.amount, rewardWithPenalty);
+}
 }
