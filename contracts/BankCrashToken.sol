@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: unlicensed
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.18;
 
@@ -29,10 +29,7 @@ contract BankCrashToken is ERC20, Ownable {
     event StakeRemoved(address indexed user, uint256 stakeId, uint256 amount, uint256 reward);
 
     constructor() ERC20("BankCrashToken", "BASH") {
-        _mint(
-            address(this),
-            INITIAL_SUPPLY
-        );
+        _mint(msg.sender, INITIAL_SUPPLY);
     }
 
     function stake(uint256 _amount, uint256 _months) virtual external {
