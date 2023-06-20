@@ -1,6 +1,9 @@
 import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 import { HardhatUserConfig, task } from "hardhat/config";
+import { config as dotenvConfig } from "dotenv";
+
+dotenvConfig();
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -11,7 +14,16 @@ const config: HardhatUserConfig = {
         runs: 1000,
       },
     },
-  } 
+  },
+  networks: {
+      sepolia: {
+        url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
+        accounts: [`${process.env.SEPOLIA_PRIVATE_KEY}`]
+      }
+    },
+  etherscan: {
+    apiKey: "2633WPJCS546W8FP4GUD8PRAUEXR4AXS3W",
+  }, 
 };
 
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
